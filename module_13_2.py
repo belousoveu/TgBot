@@ -6,7 +6,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, \
+    InlineKeyboardButton, CallbackQuery
 
 from UserState import UserState
 from commands import CommandHelp
@@ -19,6 +20,11 @@ main_keyboard = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="Информация"),
      KeyboardButton(text="Рассчитать калории")]
 ], resize_keyboard=True)
+
+caloric_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Рассчитать калории", callback_data="calories"),
+     InlineKeyboardButton(text="Формулы расчета", callback_data="formulas")]
+])
 
 
 @dp.message(CommandStart())
@@ -36,9 +42,26 @@ async def command_help_handler(message: Message) -> None:
 
 
 @dp.message(F.text == "Рассчитать калории")
-async def calories_handler(message: Message, state: FSMContext) -> None:
-    await state.update_data(name=message.from_user.full_name)
-    await message.answer("Введите свой возраст (полных лет):", reply_markup=ReplyKeyboardRemove())
+async def change_option(message: Message) -> None:
+    await message.answer("Выберите опцию:", reply_markup=caloric_keyboard)
+
+
+@dp.callback_query(F.data == "formulas")
+async def formulas_handler(callback_query: CallbackQuery) -> None:
+    print("formulas")
+    await callback_query.message.answer("""
+    Упрощенный вариант формулы Миффлина-Сан Жеора:
+    👨‍🦰 : 10 х вес (кг) + 6,25 x рост (см) – 5 х возраст (г) + 5;
+    👩‍🦰 : 10 x вес (кг) + 6,25 x рост (см) – 5 x возраст (г) – 161.
+    """)
+    await callback_query.answer()
+
+
+@dp.callback_query(F.data == "calories")
+async def calories_handler(callback_query: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(name=callback_query.from_user.full_name)
+    await callback_query.message.answer("Введите свой возраст (полных лет):")
+    await callback_query.message.delete_reply_markup()
     await state.set_state(UserState.age)
 
 
