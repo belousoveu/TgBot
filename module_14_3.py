@@ -6,41 +6,16 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton, CallbackQuery, FSInputFile
+from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery, BufferedInputFile
 
 from UserState import UserState
 from commands import CommandHelp
+from database.product import ProductRepository
+from keyboard import main_keyboard, caloric_keyboard, product_keyboard
 
 token = getenv("BOT_TOKEN")
 
 dp = Dispatcher()
-
-main_keyboard = ReplyKeyboardMarkup(keyboard=[
-    [
-        KeyboardButton(text="Информация"),
-        KeyboardButton(text="Рассчитать калории")
-    ],
-    [
-        KeyboardButton(text="Купить")
-    ]
-], resize_keyboard=True)
-
-caloric_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [
-        InlineKeyboardButton(text="Рассчитать калории", callback_data="calories"),
-        InlineKeyboardButton(text="Формулы расчета", callback_data="formulas")
-    ]
-])
-
-product_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [
-        InlineKeyboardButton(text="Product1", callback_data="product_buying"),
-        InlineKeyboardButton(text="Product2", callback_data="product_buying"),
-        InlineKeyboardButton(text="Product3", callback_data="product_buying"),
-        InlineKeyboardButton(text="Product4", callback_data="product_buying")
-    ]
-])
 
 
 @dp.message(CommandStart())
@@ -64,9 +39,12 @@ async def change_option(message: Message) -> None:
 
 @dp.message(F.text == "Купить")
 async def get_product_list(message: Message) -> None:
-    for i in range(1, 5):
-        photo = FSInputFile("picture/" + str(i) + ".jpg")
-        await message.answer_photo(photo, f"Продукт{i} | Описание {i} | Цена: {i * 100}")
+    repo = ProductRepository()
+    products = repo.get_all()
+    repo.close()
+    for product in products:
+        await message.answer_photo(BufferedInputFile(product[3], product[1]),
+                                   f"{product[1]} | {product[2]} | Цена: {product[4]}")
     await message.answer("Выберите продукт для покупки:", reply_markup=product_keyboard)
 
 
