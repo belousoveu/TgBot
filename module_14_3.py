@@ -5,13 +5,14 @@ from aiogram import Bot, Dispatcher, html, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
-from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery, BufferedInputFile
+from aiogram.types import Message, CallbackQuery, BufferedInputFile
 
-from UserState import UserState
+from calories import CaloriesState, formulas_handler, calories_handler
+from calories import age_handler, height_handler, weight_handler, gender_handler
 from commands import CommandHelp
 from database.product import ProductRepository
 from keyboard import main_keyboard, caloric_keyboard, product_keyboard
+from registration import RegistrationState, sing_up, set_username, set_email, set_age
 
 token = getenv("BOT_TOKEN")
 
@@ -48,61 +49,24 @@ async def get_product_list(message: Message) -> None:
     await message.answer("Выберите продукт для покупки:", reply_markup=product_keyboard)
 
 
+dp.message(F.text == "Регистрация" or RegistrationState.user_id)(sing_up)
+dp.message(RegistrationState.username)(set_username)
+dp.message(RegistrationState.email)(set_email)
+dp.message(RegistrationState.age)(set_age)
+
+
 @dp.callback_query(F.data == "product_buying")
 async def send_confirm_message(callback_query: CallbackQuery) -> None:
     await callback_query.message.answer("Вы успешно приобрели продукт!")
     await callback_query.answer()
 
 
-@dp.callback_query(F.data == "formulas")
-async def formulas_handler(callback_query: CallbackQuery) -> None:
-    print("formulas")
-    await callback_query.message.answer("""
-    Упрощенный вариант формулы Миффлина-Сан Жеора:
-    👨‍🦰 : 10 х вес (кг) + 6,25 x рост (см) – 5 х возраст (г) + 5;
-    👩‍🦰 : 10 x вес (кг) + 6,25 x рост (см) – 5 x возраст (г) – 161.
-    """)
-    await callback_query.answer()
-
-
-@dp.callback_query(F.data == "calories")
-async def calories_handler(callback_query: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(name=callback_query.from_user.full_name)
-    await callback_query.message.answer("Введите свой возраст (полных лет):")
-    await callback_query.message.delete_reply_markup()
-    await state.set_state(UserState.age)
-
-
-@dp.message(UserState.age)
-async def age_handler(message: Message, state: FSMContext) -> None:
-    await state.update_data(age=message.text)
-    await message.answer("Введите свой рост (см):", reply_markup=ReplyKeyboardRemove())
-    await state.set_state(UserState.height)
-
-
-@dp.message(UserState.height)
-async def height_handler(message: Message, state: FSMContext) -> None:
-    await state.update_data(height=message.text)
-    await message.answer("Введите свой вес (кг):", reply_markup=ReplyKeyboardRemove())
-    await state.set_state(UserState.weight)
-
-
-@dp.message(UserState.weight)
-async def weight_handler(message: Message, state: FSMContext) -> None:
-    await state.update_data(weight=message.text)
-    await message.answer("Введите свой пол (Муж/Жен):", reply_markup=ReplyKeyboardRemove())
-    await state.set_state(UserState.gender)
-
-
-@dp.message(UserState.gender)
-async def gender_handler(message: Message, state: FSMContext) -> None:
-    await state.update_data(gender=message.text)
-    data = await state.get_data()
-    await message.answer(
-        f"{html.bold(data['name'])}. Ваша ежедневная норма калорий: "
-        f"{html.underline(UserState.calculate_calories(data))}",
-        reply_markup=ReplyKeyboardRemove())
-    await state.clear()
+dp.callback_query(F.data == "formulas")(formulas_handler)
+dp.callback_query(F.data == "calories")(calories_handler)
+dp.message(CaloriesState.age)(age_handler)
+dp.message(CaloriesState.height)(height_handler)
+dp.message(CaloriesState.weight)(weight_handler)
+dp.message(CaloriesState.gender)(gender_handler)
 
 
 @dp.message()

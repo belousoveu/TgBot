@@ -13,3 +13,7 @@ class Repository:
 
     def close(self):
         self.connection.close()
+
+    def create_table(self, sql: str) -> None:
+        self.cursor.execute(sql)
+        self.connection.commit()

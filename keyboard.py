@@ -7,6 +7,9 @@ main_keyboard = ReplyKeyboardMarkup(keyboard=[
     ],
     [
         KeyboardButton(text="Купить")
+    ],
+    [
+        KeyboardButton(text="Регистрация")
     ]
 ], resize_keyboard=True)
 
